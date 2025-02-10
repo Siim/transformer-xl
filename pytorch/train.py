@@ -501,7 +501,14 @@ def train():
         mems = tuple()
     train_iter = tr_iter.get_varlen_iter() if args.varlen else tr_iter
     print("Iterator created, processing first batch...")
+    print(f"Log interval: {args.log_interval} steps")
+    print(f"Batch size per GPU: {args.batch_size}")
+    print(f"Total batch size: {args.batch_size * (dist.get_world_size() if args.local_rank != -1 else 1)}")
+    
     for batch, (data, target, seq_len) in enumerate(train_iter):
+        if batch == 0:
+            print(f"Processing first batch: {data.shape}, {target.shape}")
+        
         model.zero_grad()
         if args.batch_chunk > 1:
             data_chunks = torch.chunk(data, args.batch_chunk, 1)

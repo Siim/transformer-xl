@@ -426,7 +426,9 @@ class RelPartialLearnableDecoderLayer(nn.Module):
         if self.use_checkpointing and self.training:
             return torch.utils.checkpoint.checkpoint(
                 self._forward,
-                dec_inp, r, r_w_bias, r_r_bias, dec_attn_mask, mems)
+                dec_inp, r, r_w_bias, r_r_bias, dec_attn_mask, mems,
+                use_reentrant=False
+            )
         else:
             return self._forward(dec_inp, r, r_w_bias, r_r_bias, dec_attn_mask, mems)
 
