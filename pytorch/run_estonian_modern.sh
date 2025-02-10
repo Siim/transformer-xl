@@ -10,6 +10,9 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3
 export NCCL_NET_GDR_LEVEL=3
 export NCCL_IB_GID_INDEX=0
 export NCCL_SOCKET_IFNAME=^lo,docker0
+export WORLD_SIZE=4
+export MASTER_ADDR=localhost
+export MASTER_PORT=29500
 
 # Optional: for maximum performance
 export TORCH_CUDA_ARCH_LIST="9.0"
@@ -17,7 +20,10 @@ export TORCH_ALLOW_TF32_CUBLAS_OVERRIDE=1
 
 if [[ $1 == 'train' ]]; then
     echo 'Run training...'
-    python train.py \
+    python -m torch.distributed.launch \
+        --nproc_per_node=4 \
+        --master_port=$MASTER_PORT \
+        train.py \
         --cuda \
         --data ../data/estonian/ \
         --dataset wt103 \
@@ -37,10 +43,9 @@ if [[ $1 == 'train' ]]; then
         --tgt_len 512 \
         --mem_len 512 \
         --eval_tgt_len 128 \
-        --batch_size 64 \
+        --batch_size 256 \
         --batch_chunk 4 \
         --multi_gpu \
-        --gpu0_bsz 16 \
         --clip 0.25 \
         --use_tf32 \
         --use_cudnn_benchmark \
