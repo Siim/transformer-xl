@@ -18,7 +18,7 @@ export CUDA_AUTO_BOOST=0
 export CUDA_FORCE_PTX_JIT=1
 
 # For better GPU utilization
-export TORCH_CUDA_ARCH_LIST="8.0;8.0+PTX"
+export TORCH_CUDA_ARCH_LIST="9.0;9.0+PTX"
 export TORCH_DISTRIBUTED_DEBUG=INFO
 
 if [[ $1 == 'train' ]]; then
@@ -43,9 +43,9 @@ if [[ $1 == 'train' ]]; then
         --tgt_len 512 \
         --mem_len 512 \
         --eval_tgt_len 128 \
-        --batch_size 128 \
+        --batch_size 256 \
         --multi_gpu \
-        --gpu0_bsz 32 \
+        --gpu0_bsz 64 \
         --clip 0.25 \
         --use_tf32 \
         --use_cudnn_benchmark \
