@@ -1,0 +1,98 @@
+# Data directories
+data/
+**/data/
+datasets/
+**/datasets/
+corpus/
+**/corpus/
+cache/
+**/cache/
+*.pt
+*.pth
+*.pkl
+*.npy
+*.npz
+
+# Model checkpoints and logs
+checkpoints/
+runs/
+logs/
+tensorboard/
+wandb/
+*.log
+LM-TFM*/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.env
+.venv
+.python-version
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+coverage.xml
+*.cover
+
+# Distribution
+*.tar.gz
+*.zip
+*.rar
+
+# Misc
+*.bak
+*.tmp
+*.temp
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local 

@@ -237,7 +237,9 @@ def get_lm_corpus(datadir, dataset):
     fn = os.path.join(datadir, 'cache.pt')
     if os.path.exists(fn):
         print('Loading cached dataset...')
-        corpus = torch.load(fn)
+        # Add Corpus to safe globals
+        torch.serialization.add_safe_globals({"Corpus": Corpus})
+        corpus = torch.load(fn, weights_only=False)  # Keep False since we need the full object
     else:
         print('Producing dataset {}...'.format(dataset))
         kwargs = {}

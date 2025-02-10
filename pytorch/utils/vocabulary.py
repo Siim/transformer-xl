@@ -13,6 +13,10 @@ class Vocab(object):
         self.lower_case = lower_case
         self.delimiter = delimiter
         self.vocab_file = vocab_file
+        
+        # Add special tokens and unknown token
+        self.special = ['<unk>'] + special
+        self.unk_idx = 0  # Set unknown token index to 0
 
     def tokenize(self, line, add_eos=False, add_double_eos=False):
         line = line.strip()

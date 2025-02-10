@@ -6,8 +6,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-CUDA_MAJOR = int(torch.version.cuda.split('.')[0])
-CUDA_MINOR = int(torch.version.cuda.split('.')[1])
+from torch.nn.parameter import Parameter
+
+# Check CUDA version only if CUDA is available
+CUDA_MAJOR = 0
+if torch.cuda.is_available():
+    CUDA_MAJOR = int(torch.version.cuda.split('.')[0])
 
 class ProjectedAdaptiveLogSoftmax(nn.Module):
     def __init__(self, n_token, d_embed, d_proj, cutoffs, div_val=1,
