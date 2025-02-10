@@ -6,7 +6,7 @@ export CUDA_LAUNCH_BLOCKING=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,max_split_size_mb:512
 
 # H100-specific optimizations
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=0,1,2,3
 export NCCL_NET_GDR_LEVEL=3
 export NCCL_IB_GID_INDEX=0
 export NCCL_SOCKET_IFNAME=^lo,docker0
@@ -39,10 +39,13 @@ if [[ $1 == 'train' ]]; then
         --eval_tgt_len 128 \
         --batch_size 64 \
         --batch_chunk 4 \
+        --multi_gpu \
+        --gpu0_bsz 16 \
         --clip 0.25 \
         --use_tf32 \
         --use_cudnn_benchmark \
         --matmul_precision highest \
+        --log-interval 50 \
         ${@:2}
 elif [[ $1 == 'eval' ]]; then
     echo 'Run evaluation...'

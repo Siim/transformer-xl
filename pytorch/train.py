@@ -171,10 +171,19 @@ torch.manual_seed(args.seed)
 
 # SXM4-specific optimizations for A100
 if torch.cuda.is_available():
-    # Set CUDA device settings based on arguments
+    # Initialize CUDA before creating model
+    torch.cuda.init()
+    # Empty cache
+    torch.cuda.empty_cache()
+    # Set device
+    torch.cuda.set_device(0)
+    print(f"CUDA initialized. Using device: {torch.cuda.get_device_name(0)}")
+    print(f"Memory allocated: {torch.cuda.memory_allocated(0) / 1024**2:.2f} MB")
+    
     if args.use_tf32:
-        torch.backends.cuda.matmul.allow_tf32 = True  # Allow TF32 on matmul
-        torch.backends.cudnn.allow_tf32 = True        # Allow TF32 on cudnn
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        print("TF32 enabled")
     
     if args.use_cudnn_benchmark:
         torch.backends.cudnn.benchmark = True         # Enable cudnn autotuner
@@ -302,6 +311,8 @@ if args.restart:
     model.apply(update_dropout)
     model.apply(update_dropatt)
 else:
+    # Before model creation
+    print("Creating model...")
     model = MemTransformerLM(ntokens, args.n_layer, args.n_head, args.d_model,
         args.d_head, args.d_inner, args.dropout, args.dropatt,
         tie_weight=args.tied, d_embed=args.d_embed, div_val=args.div_val,
@@ -309,23 +320,26 @@ else:
         ext_len=args.ext_len, mem_len=args.mem_len, cutoffs=cutoffs,
         same_length=args.same_length, attn_type=args.attn_type,
         clamp_len=args.clamp_len, sample_softmax=args.sample_softmax)
+    print("Model created")
+
     model.apply(weights_init)
     model.word_emb.apply(weights_init) # ensure embedding init is not overridden by out_layer in case of weight sharing
-args.n_all_param = sum([p.nelement() for p in model.parameters()])
-args.n_nonemb_param = sum([p.nelement() for p in model.layers.parameters()])
+    args.n_all_param = sum([p.nelement() for p in model.parameters()])
+    args.n_nonemb_param = sum([p.nelement() for p in model.layers.parameters()])
 
-if args.fp16:
-    model = model.half()
+    if args.fp16:
+        model = model.half()
 
-if args.multi_gpu:
+    # Move model to device
+    print("Moving model to device...")
     model = model.to(device)
-    if args.gpu0_bsz >= 0:
+    print("Model moved to device")
+
+    if args.multi_gpu:
         para_model = BalancedDataParallel(args.gpu0_bsz // args.batch_chunk,
                                           model, dim=1).to(device)
     else:
-        para_model = nn.DataParallel(model, dim=1).to(device)
-else:
-    para_model = model.to(device)
+        para_model = model.to(device)
 
 #### optimizer
 if args.optim.lower() == 'sgd':
@@ -449,11 +463,16 @@ def train():
     # Turn on training mode which enables dropout.
     global train_step, train_loss, best_val_loss, eval_start_time, log_start_time
     model.train()
+    
+    print(f"Initial GPU memory: {torch.cuda.memory_allocated(0)/1024**2:.1f}MB / {torch.cuda.max_memory_allocated(0)/1024**2:.1f}MB")
+    print("Starting training loop...")
+    
     if args.batch_chunk > 1:
         mems = [tuple() for _ in range(args.batch_chunk)]
     else:
         mems = tuple()
     train_iter = tr_iter.get_varlen_iter() if args.varlen else tr_iter
+    print("Iterator created, processing first batch...")
     for batch, (data, target, seq_len) in enumerate(train_iter):
         model.zero_grad()
         if args.batch_chunk > 1:
