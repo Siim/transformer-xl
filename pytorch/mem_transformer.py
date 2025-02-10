@@ -526,7 +526,7 @@ class MemTransformerLM(nn.Module):
                  tgt_len=None, ext_len=None, mem_len=None, 
                  cutoffs=[], adapt_inp=False,
                  same_length=False, attn_type=0, clamp_len=-1, 
-                 sample_softmax=-1):
+                 sample_softmax=-1, **kwargs):
         super(MemTransformerLM, self).__init__()
         self.n_token = n_token
 
@@ -604,6 +604,8 @@ class MemTransformerLM(nn.Module):
         self.clamp_len = clamp_len
 
         self._create_params()
+
+        kwargs['use_flash_attention'] = kwargs.get('use_flash_attention', False)
 
     def backward_compatible(self):
         self.sample_softmax = -1

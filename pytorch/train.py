@@ -150,7 +150,7 @@ parser.add_argument('--use_tf32', action='store_true',
 parser.add_argument('--use_cudnn_benchmark', action='store_true',
                     help='Enable cuDNN autotuner for better performance')
 parser.add_argument('--use_flash_attention', action='store_true',
-                    help='Use memory efficient attention if available')
+                    help='Use Flash Attention implementation')
 parser.add_argument('--matmul_precision', type=str, default='high',
                     choices=['highest', 'high', 'medium'],
                     help='Set matmul precision for TF32')
