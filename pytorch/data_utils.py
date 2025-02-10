@@ -8,24 +8,26 @@ import torch
 from utils.vocabulary import Vocab
 
 class LMOrderedIterator(object):
-    def __init__(self, data, bsz, bptt, device='cpu', ext_len=None):
+    def __init__(self, data, bsz, bptt, device='cpu', ext_len=None, start_idx=0, end_idx=None):
         """
             data -- LongTensor -- the LongTensor is strictly ordered
         """
         self.bsz = bsz
         self.bptt = bptt
         self.ext_len = ext_len if ext_len is not None else 0
-
         self.device = device
+        # Support for distributed training
+        end_idx = len(data) if end_idx is None else end_idx
+        self.data = data[start_idx:end_idx]
 
         # Work out how cleanly we can divide the dataset into bsz parts.
-        self.n_step = data.size(0) // bsz
+        self.n_step = self.data.size(0) // bsz
 
         # Trim off any extra elements that wouldn't cleanly fit (remainders).
-        data = data.narrow(0, 0, self.n_step * bsz)
+        self.data = self.data.narrow(0, 0, self.n_step * bsz)
 
         # Evenly divide the data across the bsz batches.
-        self.data = data.view(bsz, -1).t().contiguous().to(device)
+        self.data = self.data.view(bsz, -1).t().contiguous().to(device)
 
         # Number of mini-batches
         self.n_batch = (self.n_step + self.bptt - 1) // self.bptt
@@ -216,10 +218,10 @@ class Corpus(object):
             self.test  = self.vocab.encode_file(
                 os.path.join(path, 'test.txt'), ordered=False, add_double_eos=True)
 
-    def get_iterator(self, split, *args, **kwargs):
+    def get_iterator(self, split, *args, start_idx=0, end_idx=None, **kwargs):
         if split == 'train':
             if self.dataset in ['ptb', 'wt2', 'wt103', 'enwik8', 'text8']:
-                data_iter = LMOrderedIterator(self.train, *args, **kwargs)
+                data_iter = LMOrderedIterator(self.train, *args, start_idx=start_idx, end_idx=end_idx, **kwargs)
             elif self.dataset == 'lm1b':
                 kwargs['shuffle'] = True
                 data_iter = LMMultiFileIterator(self.train, self.vocab, *args, **kwargs)

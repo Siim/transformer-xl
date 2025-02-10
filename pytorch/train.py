@@ -237,11 +237,25 @@ eval_batch_size = 10
 if args.local_rank != -1:
     args.batch_size = args.batch_size // dist.get_world_size()
 
-tr_iter = corpus.get_iterator('train', args.batch_size, args.tgt_len,
-    device=device, ext_len=args.ext_len)
+# Create iterator with distributed support
 if args.local_rank != -1:
-    train_sampler = DistributedSampler(tr_iter.dataset)
-    tr_iter.sampler = train_sampler
+    # Get total size of the dataset
+    data_len = len(corpus.train)
+    # Calculate indices for this rank
+    rank = dist.get_rank()
+    world_size = dist.get_world_size()
+    per_rank_size = data_len // world_size
+    start_idx = rank * per_rank_size
+    end_idx = start_idx + per_rank_size
+    if rank == world_size - 1:  # Last rank gets the remainder
+        end_idx = data_len
+    # Create iterator for this rank's portion of data
+    tr_iter = corpus.get_iterator('train', args.batch_size, args.tgt_len,
+        device=device, ext_len=args.ext_len, start_idx=start_idx, end_idx=end_idx)
+else:
+    tr_iter = corpus.get_iterator('train', args.batch_size, args.tgt_len,
+        device=device, ext_len=args.ext_len)
+
 va_iter = corpus.get_iterator('valid', eval_batch_size, args.eval_tgt_len,
     device=device, ext_len=args.ext_len)
 te_iter = corpus.get_iterator('test', eval_batch_size, args.eval_tgt_len,
