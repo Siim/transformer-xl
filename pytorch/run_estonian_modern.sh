@@ -3,6 +3,7 @@
 # Environment setup for H100
 export NCCL_DEBUG=WARN
 export CUDA_LAUNCH_BLOCKING=1
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,max_split_size_mb:512
 
 # H100-specific optimizations
 export CUDA_VISIBLE_DEVICES=0
@@ -36,7 +37,8 @@ if [[ $1 == 'train' ]]; then
         --tgt_len 512 \
         --mem_len 512 \
         --eval_tgt_len 128 \
-        --batch_size 256 \
+        --batch_size 64 \
+        --batch_chunk 4 \
         --clip 0.25 \
         --use_tf32 \
         --use_cudnn_benchmark \
