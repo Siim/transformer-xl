@@ -25,6 +25,19 @@ def clean_text(text):
     text = re.sub(r'``', ' " ', text)
     text = re.sub(r"''", ' " ', text)
     
+    # Handle numbers with commas
+    text = re.sub(r'(\d+),(\d+)', r'\1@,@\2', text)
+    
+    # Handle special number cases after punctuation spacing
+    text = re.sub(r'(\d+) \. (\d+)', r'\1.\2', text)  # Rejoin decimal numbers
+    text = re.sub(r'(\d+) @,@ (\d+)', r'\1,\2', text)  # Rejoin numbers with commas
+    
+    # Handle URLs (if they appear in your corpus)
+    text = re.sub(r'https?://\S+', ' <URL> ', text)
+    
+    # Handle emails (if they appear in your corpus)
+    text = re.sub(r'\S+@\S+\.\S+', ' <EMAIL> ', text)
+    
     # Remove multiple spaces
     text = re.sub(r'\s+', ' ', text)
     

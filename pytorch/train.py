@@ -141,6 +141,16 @@ parser.add_argument('--static-loss-scale', type=float, default=1,
 parser.add_argument('--dynamic-loss-scale', action='store_true',
                     help='Use dynamic loss scaling.  If supplied, this argument'
                     ' supersedes --static-loss-scale.')
+# SXM4-specific arguments
+parser.add_argument('--use_tf32', action='store_true',
+                    help='Use TF32 precision for matmul and cuDNN')
+parser.add_argument('--use_cudnn_benchmark', action='store_true',
+                    help='Enable cuDNN autotuner for better performance')
+parser.add_argument('--use_flash_attention', action='store_true',
+                    help='Use memory efficient attention if available')
+parser.add_argument('--matmul_precision', type=str, default='high',
+                    choices=['highest', 'high', 'medium'],
+                    help='Set matmul precision for TF32')
 args = parser.parse_args()
 args.tied = not args.not_tied
 
@@ -158,7 +168,26 @@ logging = create_exp_dir(args.work_dir,
 # Set the random seed manually for reproducibility.
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
+
+# SXM4-specific optimizations for A100
 if torch.cuda.is_available():
+    # Set CUDA device settings based on arguments
+    if args.use_tf32:
+        torch.backends.cuda.matmul.allow_tf32 = True  # Allow TF32 on matmul
+        torch.backends.cudnn.allow_tf32 = True        # Allow TF32 on cudnn
+    
+    if args.use_cudnn_benchmark:
+        torch.backends.cudnn.benchmark = True         # Enable cudnn autotuner
+    torch.backends.cudnn.enabled = True               # Always enable cudnn
+
+    # Set optimal CUDA settings for A100
+    if torch.cuda.get_device_properties(0).major >= 8:  # A100 or newer
+        # Enable memory efficient attention if requested and available
+        if args.use_flash_attention and hasattr(torch.nn.functional, 'scaled_dot_product_attention'):
+            torch.backends.cuda.enable_mem_efficient_sdp()
+        # Set matmul precision based on argument
+        torch.set_float32_matmul_precision(args.matmul_precision)
+
     if not args.cuda:
         print('WARNING: You have a CUDA device, so you should probably run with --cuda')
     else:
