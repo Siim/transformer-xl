@@ -5,6 +5,7 @@ export NCCL_P2P_LEVEL=NVL
 export NCCL_IB_HCA=mlx5
 export NCCL_DEBUG=INFO
 export CUDA_DEVICE_MAX_CONNECTIONS=1
+export CUDA_LAUNCH_BLOCKING=1
 
 # SXM4-specific optimizations
 export CUDA_VISIBLE_DEVICES=0,1,2,3
@@ -17,7 +18,7 @@ export CUDA_AUTO_BOOST=0
 export CUDA_FORCE_PTX_JIT=1
 
 # For better GPU utilization
-export TORCH_CUDA_ARCH_LIST="8.0"
+export TORCH_CUDA_ARCH_LIST="8.0;8.0+PTX"
 export TORCH_DISTRIBUTED_DEBUG=INFO
 
 if [[ $1 == 'train' ]]; then
@@ -42,9 +43,9 @@ if [[ $1 == 'train' ]]; then
         --tgt_len 512 \
         --mem_len 512 \
         --eval_tgt_len 128 \
-        --batch_size 512 \
+        --batch_size 128 \
         --multi_gpu \
-        --fp16 \
+        --gpu0_bsz 32 \
         --clip 0.25 \
         --use_tf32 \
         --use_cudnn_benchmark \
@@ -61,7 +62,6 @@ elif [[ $1 == 'eval' ]]; then
         --clamp_len 1000 \
         --same_length \
         --split test \
-        --fp16 \
         ${@:2}
 else
     echo 'unknown argument 1'
