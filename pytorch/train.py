@@ -505,6 +505,9 @@ def train():
     print(f"Batch size per GPU: {args.batch_size}")
     print(f"Total batch size: {args.batch_size * (dist.get_world_size() if args.local_rank != -1 else 1)}")
     
+    # Log only from main process
+    is_main_process = args.local_rank in [-1, 0]
+    
     for batch, (data, target, seq_len) in enumerate(train_iter):
         if batch == 0:
             print(f"Processing first batch: {data.shape}, {target.shape}")
@@ -561,19 +564,16 @@ def train():
             scheduler.step()
 
         if train_step % args.log_interval == 0:
-            cur_loss = train_loss / args.log_interval
-            elapsed = time.time() - log_start_time
-            log_str = '| epoch {:3d} step {:>8d} | {:>6d} batches | lr {:.3g} ' \
-                      '| ms/batch {:5.2f} | loss {:5.2f}'.format(
-                epoch, train_step, batch+1, optimizer.param_groups[0]['lr'],
-                elapsed * 1000 / args.log_interval, cur_loss)
-            if args.dataset in ['enwik8', 'text8']:
-                log_str += ' | bpc {:9.5f}'.format(cur_loss / math.log(2))
-            else:
-                log_str += ' | ppl {:9.3f}'.format(math.exp(cur_loss))
-            logging(log_str)
-            train_loss = 0
-            log_start_time = time.time()
+            if is_main_process:  # Only log from main process
+                cur_loss = train_loss / args.log_interval
+                elapsed = time.time() - log_start_time
+                log_str = '| epoch {:3d} step {:>8d} | {:>6d} batches | lr {:.3g} ' \
+                         '| ms/batch {:5.2f} | loss {:5.2f} | ppl {:9.3f}'.format(
+                    epoch, train_step, batch+1, optimizer.param_groups[0]['lr'],
+                    elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss))
+                logging(log_str)
+                train_loss = 0
+                log_start_time = time.time()
 
         if train_step % args.eval_interval == 0:
             val_loss = evaluate(va_iter)

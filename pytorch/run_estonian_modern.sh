@@ -51,6 +51,7 @@ if [[ $1 == 'train' ]]; then
         --use_tf32 \
         --use_cudnn_benchmark \
         --matmul_precision highest \
+        --use_flash_attention \
         --log_interval 50 \
         ${@:2}
 elif [[ $1 == 'eval' ]]; then

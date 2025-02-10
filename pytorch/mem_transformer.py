@@ -212,12 +212,28 @@ class RelMultiHeadAttn(nn.Module):
         raise NotImplementedError
 
 class RelPartialLearnableMultiHeadAttn(RelMultiHeadAttn):
-    def __init__(self, *args, **kwargs):
-        super(RelPartialLearnableMultiHeadAttn, self).__init__(*args, **kwargs)
+    def __init__(self, n_head, d_model, d_head, dropout, dropatt=0, 
+                 pre_lnorm=False, **kwargs):
+        super().__init__(n_head, d_model, d_head, dropout, dropatt, **kwargs)
+        
+        self.use_flash = kwargs.get('use_flash_attention', False)
+        if self.use_flash:
+            from flash_attn import flash_attn_qkvpacked_func
+            self.flash_fn = flash_attn_qkvpacked_func
 
         self.r_net = nn.Linear(self.d_model, self.n_head * self.d_head, bias=False)
 
     def forward(self, w, r, r_w_bias, r_r_bias, attn_mask=None, mems=None):
+        if self.use_flash and self.training:
+            qkv = self._compute_qkv(w, r, r_w_bias, r_r_bias)
+            # qkv shape: [bsz, seqlen, 3, n_head, d_head]
+            output = self.flash_fn(
+                qkv,
+                causal=True,
+                softmax_scale=1.0/math.sqrt(self.d_head)
+            )
+            return self.drop(self.o_net(output))
+        
         qlen, rlen, bsz = w.size(0), r.size(0), w.size(1)
 
         if mems is not None:
