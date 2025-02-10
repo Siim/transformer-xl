@@ -8,9 +8,9 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 # SXM4-specific optimizations
 export CUDA_VISIBLE_DEVICES=0,1,2,3
-export NCCL_NET_GDR_LEVEL=PHB  # Enable GPUDirect RDMA
-export NCCL_IB_GID_INDEX=3     # Use RoCE v2
-export NCCL_SOCKET_IFNAME=^lo,docker0  # Exclude loopback and docker interfaces
+export NCCL_NET_GDR_LEVEL=PHB
+export NCCL_IB_GID_INDEX=3
+export NCCL_SOCKET_IFNAME=^lo,docker0
 
 # Optional: for maximum performance
 export CUDA_AUTO_BOOST=0
@@ -44,8 +44,8 @@ if [[ $1 == 'train' ]]; then
         --eval_tgt_len 128 \
         --batch_size 512 \
         --multi_gpu \
-        --use_amp \
-        --gradient_clip_val 0.25 \
+        --fp16 \
+        --clip 0.25 \
         --use_tf32 \
         --use_cudnn_benchmark \
         --use_flash_attention \
@@ -62,7 +62,7 @@ elif [[ $1 == 'eval' ]]; then
         --clamp_len 1000 \
         --same_length \
         --split test \
-        --use_amp \
+        --fp16 \
         ${@:2}
 else
     echo 'unknown argument 1'
