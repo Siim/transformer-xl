@@ -48,7 +48,6 @@ if [[ $1 == 'train' ]]; then
         --clip 0.25 \
         --use_tf32 \
         --use_cudnn_benchmark \
-        --use_flash_attention \
         --matmul_precision highest \
         ${@:2}
 elif [[ $1 == 'eval' ]]; then

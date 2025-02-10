@@ -184,7 +184,7 @@ if torch.cuda.is_available():
     if torch.cuda.get_device_properties(0).major >= 8:  # A100 or newer
         # Enable memory efficient attention if requested and available
         if args.use_flash_attention and hasattr(torch.nn.functional, 'scaled_dot_product_attention'):
-            torch.backends.cuda.enable_mem_efficient_sdp()
+            torch.backends.cuda.enable_mem_efficient_sdp(True)
         # Set matmul precision based on argument
         torch.set_float32_matmul_precision(args.matmul_precision)
 
