@@ -1,25 +1,18 @@
 #!/bin/bash
 
-# Environment setup for A100 SXM4
-export NCCL_P2P_LEVEL=NVL
-export NCCL_IB_HCA=mlx5
-export NCCL_DEBUG=INFO
-export CUDA_DEVICE_MAX_CONNECTIONS=1
+# Environment setup for H100
+export NCCL_DEBUG=WARN
 export CUDA_LAUNCH_BLOCKING=1
 
-# SXM4-specific optimizations
+# H100-specific optimizations
 export CUDA_VISIBLE_DEVICES=0,1,2,3
-export NCCL_NET_GDR_LEVEL=PHB
-export NCCL_IB_GID_INDEX=3
+export NCCL_NET_GDR_LEVEL=3
+export NCCL_IB_GID_INDEX=0
 export NCCL_SOCKET_IFNAME=^lo,docker0
 
 # Optional: for maximum performance
-export CUDA_AUTO_BOOST=0
-export CUDA_FORCE_PTX_JIT=1
-
-# For better GPU utilization
-export TORCH_CUDA_ARCH_LIST="9.0;9.0+PTX"
-export TORCH_DISTRIBUTED_DEBUG=INFO
+export TORCH_CUDA_ARCH_LIST="9.0"
+export TORCH_ALLOW_TF32_CUBLAS_OVERRIDE=1
 
 if [[ $1 == 'train' ]]; then
     echo 'Run training...'
@@ -45,7 +38,7 @@ if [[ $1 == 'train' ]]; then
         --eval_tgt_len 128 \
         --batch_size 256 \
         --multi_gpu \
-        --gpu0_bsz 64 \
+        --gpu0_bsz -1 \
         --clip 0.25 \
         --use_tf32 \
         --use_cudnn_benchmark \
