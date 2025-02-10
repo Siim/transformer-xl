@@ -154,10 +154,9 @@ parser.add_argument('--use_flash_attention', action='store_true',
 parser.add_argument('--matmul_precision', type=str, default='high',
                     choices=['highest', 'high', 'medium'],
                     help='Set matmul precision for TF32')
-parser.add_argument('--local_rank', type=int, default=-1,
-                    help='Local rank for distributed training')
 args = parser.parse_args()
 args.tied = not args.not_tied
+args.local_rank = int(os.environ.get('LOCAL_RANK', -1))
 
 if args.d_embed < 0:
     args.d_embed = args.d_model
@@ -184,7 +183,9 @@ if torch.cuda.is_available():
     if args.local_rank != -1:
         torch.cuda.set_device(args.local_rank)
         device = torch.device('cuda', args.local_rank)
-        dist.init_process_group(backend='nccl')
+        # Initialize process group
+        if not dist.is_initialized():
+            dist.init_process_group(backend='nccl', init_method='env://')
     else:
         device = torch.device('cuda')
     print(f"CUDA initialized. Using device: {torch.cuda.get_device_name(0)}")
@@ -232,10 +233,15 @@ ntokens = len(corpus.vocab)
 args.n_token = ntokens
 
 eval_batch_size = 10
+# Adjust batch size for distributed training
+if args.local_rank != -1:
+    args.batch_size = args.batch_size // dist.get_world_size()
+
+tr_iter = corpus.get_iterator('train', args.batch_size, args.tgt_len,
+    device=device, ext_len=args.ext_len)
 if args.local_rank != -1:
     train_sampler = DistributedSampler(tr_iter.dataset)
-    tr_iter = corpus.get_iterator('train', args.batch_size // dist.get_world_size(), 
-        args.tgt_len, device=device, ext_len=args.ext_len, sampler=train_sampler)
+    tr_iter.sampler = train_sampler
 va_iter = corpus.get_iterator('valid', eval_batch_size, args.eval_tgt_len,
     device=device, ext_len=args.ext_len)
 te_iter = corpus.get_iterator('test', eval_batch_size, args.eval_tgt_len,

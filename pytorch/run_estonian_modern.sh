@@ -20,9 +20,10 @@ export TORCH_ALLOW_TF32_CUBLAS_OVERRIDE=1
 
 if [[ $1 == 'train' ]]; then
     echo 'Run training...'
-    python -m torch.distributed.launch \
+    torchrun \
+        --standalone \
+        --nnodes=1 \
         --nproc_per_node=4 \
-        --master_port=$MASTER_PORT \
         train.py \
         --cuda \
         --data ../data/estonian/ \
