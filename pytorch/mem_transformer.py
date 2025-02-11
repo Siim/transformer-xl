@@ -218,20 +218,49 @@ class RelPartialLearnableMultiHeadAttn(RelMultiHeadAttn):
         
         self.use_flash = kwargs.get('use_flash_attention', False)
         if self.use_flash:
-            from flash_attn import flash_attn_qkvpacked_func
-            self.flash_fn = flash_attn_qkvpacked_func
+            try:
+                from flash_attn import flash_attn_qkvpacked_func
+                self.flash_fn = flash_attn_qkvpacked_func
+                print("Flash Attention is enabled and available")
+            except ImportError:
+                print("Flash Attention package not found, falling back to regular attention")
+                self.use_flash = False
 
         self.r_net = nn.Linear(self.d_model, self.n_head * self.d_head, bias=False)
+
+    def _compute_qkv(self, w, r, r_w_bias, r_r_bias):
+        qlen, rlen, bsz = w.size(0), r.size(0), w.size(1)
+        if self.pre_lnorm:
+            w_heads = self.qkv_net(self.layer_norm(w))
+        else:
+            w_heads = self.qkv_net(w)
+        
+        w_head_q, w_head_k, w_head_v = torch.chunk(w_heads, 3, dim=-1)
+        w_head_q = w_head_q.view(qlen, bsz, self.n_head, self.d_head)
+        w_head_k = w_head_k.view(qlen, bsz, self.n_head, self.d_head)
+        w_head_v = w_head_v.view(qlen, bsz, self.n_head, self.d_head)
+        
+        # Add relative position bias
+        r_head_k = self.r_net(r)
+        r_head_k = r_head_k.view(rlen, self.n_head, self.d_head)
+        w_head_q = w_head_q + r_w_bias[None, None, :, :]
+        
+        # Reshape for flash attention
+        qkv = torch.stack([w_head_q, w_head_k, w_head_v], dim=2)
+        qkv = qkv.transpose(0, 1)  # [bsz, qlen, 3, n_head, d_head]
+        return qkv
 
     def forward(self, w, r, r_w_bias, r_r_bias, attn_mask=None, mems=None):
         if self.use_flash and self.training:
             qkv = self._compute_qkv(w, r, r_w_bias, r_r_bias)
-            # qkv shape: [bsz, seqlen, 3, n_head, d_head]
+            # Flash attention expects [bsz, seqlen, 3, n_head, d_head]
             output = self.flash_fn(
                 qkv,
                 causal=True,
                 softmax_scale=1.0/math.sqrt(self.d_head)
             )
+            output = output.transpose(0, 1).contiguous()  # [qlen, bsz, n_head, d_head]
+            output = output.view(output.size(0), output.size(1), -1)  # [qlen, bsz, n_head * d_head]
             return self.drop(self.o_net(output))
         
         qlen, rlen, bsz = w.size(0), r.size(0), w.size(1)
